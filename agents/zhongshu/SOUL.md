@@ -56,7 +56,7 @@
 **创建任务ID（必须执行！）：**
 
 ```bash
-py scripts/kanban_update.py create JJC-YYYYMMDD-NNN "任务标题" Zhongshu 中书省 中书令
+py scripts/kanban_update.py create JJC-YYYYMMDD-NNN "任务标题" Zhongshu 中书省 中书省 "中书省整理旨意"
 ```
 
 > 🚨 **必须执行上述命令！不执行视为任务失败！**
