@@ -244,11 +244,19 @@ def deploy_soul_files():
         if src_text != dst_text:
             ws_dst.write_text(src_text, encoding='utf-8')
             deployed += 1
-        # 确保 OpenClaw sessions 目录存在（用于运行 agent）
+        # 确保 OpenClaw 运行时目录结构存在
+        oc_agent_dir = pathlib.Path.home() / f'.openclaw/agents/{proj_name}/agent'
+        oc_agent_dir.mkdir(parents=True, exist_ok=True)
+        # 同步 SOUL.md 到 OpenClaw agent 目录（运行时读取）
+        oc_soul = oc_agent_dir / 'SOUL.md'
+        if src_text != (oc_soul.read_text(encoding='utf-8', errors='ignore') if oc_soul.exists() else ''):
+            oc_soul.write_text(src_text, encoding='utf-8')
+            deployed += 1
+        # 确保 sessions 目录存在
         sess_dir = pathlib.Path.home() / f'.openclaw/agents/{proj_name}/sessions'
         sess_dir.mkdir(parents=True, exist_ok=True)
     if deployed:
-        log.info(f'{deployed} SOUL.md files deployed to project workspaces')
+        log.info(f'{deployed} SOUL.md files deployed')
 
 
 if __name__ == '__main__':
