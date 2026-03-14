@@ -244,6 +244,9 @@ def deploy_soul_files():
         if src_text != dst_text:
             ws_dst.write_text(src_text, encoding='utf-8')
             deployed += 1
+        # 确保 OpenClaw sessions 目录存在（用于运行 agent）
+        sess_dir = pathlib.Path.home() / f'.openclaw/agents/{proj_name}/sessions'
+        sess_dir.mkdir(parents=True, exist_ok=True)
     if deployed:
         log.info(f'{deployed} SOUL.md files deployed to project workspaces')
 
