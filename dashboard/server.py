@@ -820,9 +820,14 @@ def _check_agent_process(agent_id):
 
 
 def _check_agent_workspace(agent_id):
-    """检查 Agent 工作空间是否存在。"""
-    ws = OCLAW_HOME / f'workspace-{agent_id}'
-    return ws.is_dir()
+    """检查 Agent 工作空间是否存在（优先检查项目目录，其次检查 ~/.openclaw/）"""
+    # 优先检查项目目录下的 workspaces
+    project_ws = BASE_DIR / 'workspaces' / agent_id
+    if project_ws.is_dir():
+        return True
+    # 兼容旧版本：检查 ~/.openclaw/workspace-{agent_id}
+    oc_ws = OCLAW_HOME / f'workspace-{agent_id}'
+    return oc_ws.is_dir()
 
 
 def get_agents_status():
