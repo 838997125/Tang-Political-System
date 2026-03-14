@@ -27,9 +27,9 @@ $installScripts = @(
     "10-analyze-config.ps1"
     "20-backup-config.ps1"
     "30-create-workspaces.ps1"
-    "35-init-data.ps1"
     "40-register-agents.ps1"
     "50-configure-main.ps1"
+    "35-init-data.ps1"      # Moved after agent registration
     "60-copy-cheatsheet.ps1"
     "70-start-services.ps1"
     "99-finish.ps1"
