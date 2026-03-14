@@ -18,6 +18,10 @@ __pycache__/
 *.log
 logs/
 
+# Output (user-generated content)
+output/
+!/output/.gitkeep
+
 # OS files
 .DS_Store
 Thumbs.db
