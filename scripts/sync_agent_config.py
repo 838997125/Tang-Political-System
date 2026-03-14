@@ -15,16 +15,18 @@ DATA = BASE / 'data'
 OPENCLAW_CFG = pathlib.Path.home() / '.openclaw' / 'openclaw.json'
 
 ID_LABEL = {
+    'main':     {'label': '皇上',   'role': '皇帝',     'duty': '天下之主，发号施令',      'emoji': '👑'},
+    'work':     {'label': '内阁',   'role': '首辅',     'duty': '日常事务处理',            'emoji': '📋'},
     'zhongshu': {'label': '中书省', 'role': '中书令',   'duty': '接旨起草与飞书消息分拣',  'emoji': '📜'},
-    'menxia':   {'label': '门下省', 'role': '侍中',     'duty': '审议与退回机制',      'emoji': '🔍'},
-    'shangshu': {'label': '尚书省', 'role': '尚书令',   'duty': '派单与升级裁决',      'emoji': '📮'},
-    'libu':     {'label': '礼部',   'role': '礼部尚书', 'duty': '文档/汇报/规范',      'emoji': '📝'},
-    'hubu':     {'label': '户部',   'role': '户部尚书', 'duty': '资源/预算/成本',      'emoji': '💰'},
-    'bingbu':   {'label': '兵部',   'role': '兵部尚书', 'duty': '应急与巡检',          'emoji': '⚔️'},
-    'xingbu':   {'label': '刑部',   'role': '刑部尚书', 'duty': '合规/审计/红线',      'emoji': '⚖️'},
-    'gongbu':   {'label': '工部',   'role': '工部尚书', 'duty': '工程交付与自动化',    'emoji': '🔧'},
-    'libu_hr':  {'label': '吏部',   'role': '吏部尚书', 'duty': '人事/培训/Agent管理',  'emoji': '👔'},
-    'zaochao':  {'label': '钦天监', 'role': '朝报官',   'duty': '每日新闻采集与简报',  'emoji': '📰'},
+    'menxia':   {'label': '门下省', 'role': '侍中',     'duty': '审议与退回机制',          'emoji': '🔍'},
+    'shangshu': {'label': '尚书省', 'role': '尚书令',   'duty': '派单与升级裁决',          'emoji': '📮'},
+    'libu':     {'label': '礼部',   'role': '礼部尚书', 'duty': '文档/汇报/规范',          'emoji': '📝'},
+    'hubu':     {'label': '户部',   'role': '户部尚书', 'duty': '资源/预算/成本',          'emoji': '💰'},
+    'bingbu':   {'label': '兵部',   'role': '兵部尚书', 'duty': '应急与巡检',              'emoji': '⚔️'},
+    'xingbu':   {'label': '刑部',   'role': '刑部尚书', 'duty': '合规/审计/红线',          'emoji': '⚖️'},
+    'gongbu':   {'label': '工部',   'role': '工部尚书', 'duty': '工程交付与自动化',        'emoji': '🔧'},
+    'libu_hr':  {'label': '吏部',   'role': '吏部尚书', 'duty': '人事/培训/Agent管理',      'emoji': '👔'},
+    'zaochao':  {'label': '钦天监', 'role': '朝报官',   'duty': '每日新闻采集与简报',      'emoji': '📰'},
 }
 
 def get_known_models(cfg, agents_list, default_model):
