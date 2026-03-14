@@ -1,0 +1,29 @@
+# Git
+.git
+.gitignore
+
+# IDE / Editor
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+.mypy_cache
+.pytest_cache
+.venv
+venv
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs (not needed in image)
+docs/
+*.md
+!README.md
+LICENSE

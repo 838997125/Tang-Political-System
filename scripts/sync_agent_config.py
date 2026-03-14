@@ -1,0 +1,250 @@
+﻿#!/usr/bin/env python3
+"""
+同步 openclaw.json 中的 agent 配置 → data/agent_config.json
+支持自动发现 agent workspace 下的 Skills 目录
+"""
+import json, pathlib, datetime, logging
+from file_lock import atomic_json_write
+
+log = logging.getLogger('sync_agent_config')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(name)s] %(message)s', datefmt='%H:%M:%S')
+
+# Auto-detect project root (parent of scripts/)
+BASE = pathlib.Path(__file__).parent.parent
+DATA = BASE / 'data'
+OPENCLAW_CFG = pathlib.Path.home() / '.openclaw' / 'openclaw.json'
+
+ID_LABEL = {
+    'zhongshu': {'label': '中书省', 'role': '中书令',   'duty': '接旨起草与飞书消息分拣',  'emoji': '📜'},
+    'menxia':   {'label': '门下省', 'role': '侍中',     'duty': '审议与退回机制',      'emoji': '🔍'},
+    'shangshu': {'label': '尚书省', 'role': '尚书令',   'duty': '派单与升级裁决',      'emoji': '📮'},
+    'libu':     {'label': '礼部',   'role': '礼部尚书', 'duty': '文档/汇报/规范',      'emoji': '📝'},
+    'hubu':     {'label': '户部',   'role': '户部尚书', 'duty': '资源/预算/成本',      'emoji': '💰'},
+    'bingbu':   {'label': '兵部',   'role': '兵部尚书', 'duty': '应急与巡检',          'emoji': '⚔️'},
+    'xingbu':   {'label': '刑部',   'role': '刑部尚书', 'duty': '合规/审计/红线',      'emoji': '⚖️'},
+    'gongbu':   {'label': '工部',   'role': '工部尚书', 'duty': '工程交付与自动化',    'emoji': '🔧'},
+    'libu_hr':  {'label': '吏部',   'role': '吏部尚书', 'duty': '人事/培训/Agent管理',  'emoji': '👔'},
+    'zaochao':  {'label': '钦天监', 'role': '朝报官',   'duty': '每日新闻采集与简报',  'emoji': '📰'},
+}
+
+def get_known_models(cfg, agents_list, default_model):
+    """从 openclaw.json 中提取用户配置的所有模型"""
+    models = {}
+    
+    # 添加默认模型
+    if default_model and default_model != 'unknown':
+        models[default_model] = {'id': default_model, 'label': default_model.split('/')[-1], 'provider': default_model.split('/')[0] if '/' in default_model else 'Default'}
+    
+    # 从 agents 中提取模型
+    for ag in agents_list:
+        model_val = ag.get('model', '')
+        # Handle both string and dict model values
+        if isinstance(model_val, dict):
+            model_str = model_val.get('primary', '') or model_val.get('id', '')
+        else:
+            model_str = str(model_val) if model_val else ''
+        
+        if model_str and model_str != 'unknown':
+            provider = model_str.split('/')[0] if '/' in model_str else 'Custom'
+            label = model_str.split('/')[-1] if '/' in model_str else model_str
+            models[model_str] = {'id': model_str, 'label': label, 'provider': provider}
+    
+    # 从 cfg.models.providers 中提取所有可用模型
+    providers = cfg.get('models', {}).get('providers', {})
+    for provider_id, provider_cfg in providers.items():
+        provider_name = provider_cfg.get('name', provider_id)
+        for model_info in provider_cfg.get('models', []):
+            # model_info could be a dict or a string representation
+            if isinstance(model_info, dict):
+                model_id = model_info.get('id', '')
+                model_name = model_info.get('name', model_id)
+            elif isinstance(model_info, str):
+                # Handle string representation like "@{id=kimi-k2.5; name=...}"
+                import re
+                match = re.search(r'id=([^;]+)', model_info)
+                model_id = match.group(1) if match else model_info
+                match = re.search(r'name=([^;]+)', model_info)
+                model_name = match.group(1) if match else model_id
+            else:
+                continue
+            if model_id:
+                models[model_id] = {'id': model_id, 'label': model_name, 'provider': provider_name}
+    
+    return list(models.values())
+
+
+def normalize_model(model_value, fallback='unknown'):
+    if isinstance(model_value, str) and model_value:
+        return model_value
+    if isinstance(model_value, dict):
+        return model_value.get('primary') or model_value.get('id') or fallback
+    return fallback
+
+
+def get_skills(workspace: str):
+    skills_dir = pathlib.Path(workspace) / 'skills'
+    skills = []
+    try:
+        if skills_dir.exists():
+            for d in sorted(skills_dir.iterdir()):
+                if d.is_dir():
+                    md = d / 'SKILL.md'
+                    desc = ''
+                    if md.exists():
+                        try:
+                            for line in md.read_text(encoding='utf-8', errors='ignore').splitlines():
+                                line = line.strip()
+                                if line and not line.startswith('#') and not line.startswith('---'):
+                                    desc = line[:100]
+                                    break
+                        except Exception:
+                            desc = '(读取失败)'
+                    skills.append({'name': d.name, 'path': str(md), 'exists': md.exists(), 'description': desc})
+    except PermissionError as e:
+        log.warning(f'Skills 目录访问受限: {e}')
+    return skills
+
+
+def main():
+    cfg = {}
+    try:
+        cfg = json.loads(OPENCLAW_CFG.read_text())
+    except Exception as e:
+        log.warning(f'cannot read openclaw.json: {e}')
+        return
+
+    agents_cfg = cfg.get('agents', {})
+    default_model = normalize_model(agents_cfg.get('defaults', {}).get('model', {}), 'unknown')
+    agents_list = agents_cfg.get('list', [])
+
+    result = []
+    seen_ids = set()
+    for ag in agents_list:
+        ag_id = ag.get('id', '')
+        if ag_id not in ID_LABEL:
+            continue
+        meta = ID_LABEL[ag_id]
+        workspace = ag.get('workspace', str(pathlib.Path.home() / f'.openclaw/workspace-{ag_id}'))
+        result.append({
+            'id': ag_id,
+            'label': meta['label'], 'role': meta['role'], 'duty': meta['duty'], 'emoji': meta['emoji'],
+            'model': normalize_model(ag.get('model', default_model), default_model),
+            'defaultModel': default_model,
+            'workspace': workspace,
+            'skills': get_skills(workspace),
+            'allowAgents': ag.get('subagents', {}).get('allowAgents', []),
+        })
+        seen_ids.add(ag_id)
+
+    # 补充不在 openclaw.json agents list 中的 agent
+    EXTRA_AGENTS = {
+        'main':    {'model': default_model, 'workspace': str(pathlib.Path.home() / '.openclaw/workspace'),
+                    'allowAgents': ['zhongshu']},
+        'zaochao': {'model': default_model, 'workspace': str(pathlib.Path.home() / '.openclaw/workspace-zaochao'),
+                    'allowAgents': []},
+        'libu_hr': {'model': default_model, 'workspace': str(pathlib.Path.home() / '.openclaw/workspace-libu_hr'),
+                    'allowAgents': ['shangshu']},
+    }
+    for ag_id, extra in EXTRA_AGENTS.items():
+        if ag_id in seen_ids or ag_id not in ID_LABEL:
+            continue
+        meta = ID_LABEL[ag_id]
+        result.append({
+            'id': ag_id,
+            'label': meta['label'], 'role': meta['role'], 'duty': meta['duty'], 'emoji': meta['emoji'],
+            'model': extra['model'],
+            'defaultModel': default_model,
+            'workspace': extra['workspace'],
+            'skills': get_skills(extra['workspace']),
+            'allowAgents': extra['allowAgents'],
+            'isDefaultModel': True,
+        })
+
+    # 动态获取用户配置的模型列表
+    known_models = get_known_models(cfg, agents_list, default_model)
+    
+    payload = {
+        'generatedAt': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'defaultModel': default_model,
+        'knownModels': known_models,
+        'agents': result,
+    }
+    DATA.mkdir(exist_ok=True)
+    atomic_json_write(DATA / 'agent_config.json', payload)
+    log.info(f'{len(result)} agents synced')
+
+    # 自动部署 SOUL.md 到 workspace（如果项目里有更新）
+    deploy_soul_files()
+    # 同步 scripts/ 到各 workspace（保持 kanban_update.py 等最新）
+    sync_scripts_to_workspaces()
+
+
+# 项目 agents/ 目录名 → 运行时 agent_id 映射
+_SOUL_DEPLOY_MAP = {
+    'zhongshu': 'zhongshu',
+    'menxia': 'menxia',
+    'shangshu': 'shangshu',
+    'libu': 'libu',
+    'hubu': 'hubu',
+    'bingbu': 'bingbu',
+    'xingbu': 'xingbu',
+    'gongbu': 'gongbu',
+    'libu_hr': 'libu_hr',
+    'zaochao': 'zaochao',
+}
+
+def sync_scripts_to_workspaces():
+    """将项目 scripts/ 目录同步到项目目录下的各 agent workspace（保持 kanban_update.py 等最新）"""
+    scripts_src = BASE / 'scripts'
+    if not scripts_src.is_dir():
+        return
+    synced = 0
+    # 只同步到项目目录下的 workspaces，不创建 ~/.openclaw/workspace-xxx
+    for proj_name in _SOUL_DEPLOY_MAP.keys():
+        ws_scripts = BASE / 'workspaces' / proj_name / 'scripts'
+        ws_scripts.mkdir(parents=True, exist_ok=True)
+        for src_file in scripts_src.iterdir():
+            if src_file.suffix not in ('.py', '.sh') or src_file.stem.startswith('__'):
+                continue
+            dst_file = ws_scripts / src_file.name
+            try:
+                src_text = src_file.read_bytes()
+            except Exception:
+                continue
+            try:
+                dst_text = dst_file.read_bytes() if dst_file.exists() else b''
+            except Exception:
+                dst_text = b''
+            if src_text != dst_text:
+                dst_file.write_bytes(src_text)
+                synced += 1
+    if synced:
+        log.info(f'{synced} script files synced to project workspaces')
+
+
+def deploy_soul_files():
+    """将项目 agents/xxx/SOUL.md 部署到项目目录下的 workspaces/xxx/soul.md"""
+    agents_dir = BASE / 'agents'
+    deployed = 0
+    for proj_name in _SOUL_DEPLOY_MAP.keys():
+        src = agents_dir / proj_name / 'SOUL.md'
+        if not src.exists():
+            continue
+        # 部署到项目目录下的 workspace，不部署到 ~/.openclaw/
+        ws_dst = BASE / 'workspaces' / proj_name / 'soul.md'
+        ws_dst.parent.mkdir(parents=True, exist_ok=True)
+        # 只在内容不同时更新（避免不必要的写入）
+        src_text = src.read_text(encoding='utf-8', errors='ignore')
+        try:
+            dst_text = ws_dst.read_text(encoding='utf-8', errors='ignore')
+        except FileNotFoundError:
+            dst_text = ''
+        if src_text != dst_text:
+            ws_dst.write_text(src_text, encoding='utf-8')
+            deployed += 1
+    if deployed:
+        log.info(f'{deployed} SOUL.md files deployed to project workspaces')
+
+
+if __name__ == '__main__':
+    main()

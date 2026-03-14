@@ -1,0 +1,51 @@
+{
+  "providers": {
+    "custom-dashscope-aliyuncs-com": {
+      "baseUrl": "https://coding.dashscope.aliyuncs.com/v1",
+      "apiKey": "sk-sp-ce7c46d8bc6348f58b1d79f98af21739",
+      "api": "openai-completions",
+      "models": [
+        {
+          "id": "MiniMax-M2.5",
+          "name": "MiniMax-M2.5 (Custom Provider)",
+          "reasoning": false,
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 262144,
+          "maxTokens": 32768
+        }
+      ]
+    },
+    "custom-coding-dashscope-aliyuncs-com": {
+      "baseUrl": "https://coding.dashscope.aliyuncs.com/v1",
+      "apiKey": "sk-sp-ce7c46d8bc6348f58b1d79f98af21739",
+      "api": "openai-completions",
+      "models": [
+        {
+          "id": "kimi-k2.5",
+          "name": "kimi-k2.5 (Custom Provider)",
+          "reasoning": false,
+          "input": [
+            "text",
+            "image"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 262144,
+          "maxTokens": 32768
+        }
+      ]
+    }
+  }
+}
