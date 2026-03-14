@@ -39,6 +39,7 @@ log = logging.getLogger('server')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(name)s] %(message)s', datefmt='%H:%M:%S')
 
 OCLAW_HOME = pathlib.Path.home() / '.openclaw'
+BASE_DIR = pathlib.Path(__file__).parent.parent  # 项目根目录
 MAX_REQUEST_BODY = 1 * 1024 * 1024  # 1 MB
 ALLOWED_ORIGIN = None  # Set via --cors; None means restrict to localhost
 _DEFAULT_ORIGINS = {
