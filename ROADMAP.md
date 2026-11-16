@@ -33,6 +33,21 @@
 
 ---
 
+## Phase 1.5 — 科研模式 ✅
+
+> 把通用协作升级为「像公司一样做科研」：八阶段生命周期 + 六道强制门禁 + 全员科研职责。
+
+- [x] 科研流程总纲（[docs/research-workflow.md](docs/research-workflow.md)）—— Stage-Gate 阶段门禁 + RACI 角色映射 + 三条标准科研工作流
+- [x] 科研 SOP 检查清单（[docs/research-sop.md](docs/research-sop.md)）—— 八阶段逐项检查 + 交付物模板
+- [x] 全员 Agent 科研化（11 个 SOUL.md：学术委员会/PMO/实验研发/诚信审计等角色）
+- [x] 旨库新增 6 个科研模板（科研立项/文献综述/开题报告/实验复现/论文写作与内审/投稿前评审）
+- [x] 端到端科研案例（[examples/research-project.md](examples/research-project.md)）
+- [ ] 文献数据库集成（Zotero / Semantic Scholar API 自动检索与清单生成）
+- [ ] 实验追踪集成（MLflow / W&B 适配器，自动回写看板）
+- [ ] LaTeX 论文编译流水线（礼部自动产出 venue 格式 PDF）
+
+---
+
 ## Phase 2 — 制度深化 🚧
 
 > 把"好用"升级为"不可替代"：让分权制衡不只是概念，而是有绩效评估、有人工审批、有知识沉淀的完整制度。
